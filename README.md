@@ -1,1 +1,1 @@
-# deploy-gitlab-portainer
+# Gitlab pipeline and deploy in portainer with docker swarm

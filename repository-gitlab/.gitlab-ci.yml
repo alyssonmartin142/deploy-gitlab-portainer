@@ -1,0 +1,28 @@
+build-docker-master:
+  image: docker:20.10.0
+  stage: build
+  services:
+    - docker:20.10.0-dind
+  before_script:
+    - export DOCKER_REGISTRY_USER=$CI_REGISTRY_USER # built-in GitLab Registry User
+    - export DOCKER_REGISTRY_PASSWORD=$CI_REGISTRY_PASSWORD # built-in GitLab Registry Password
+    - export DOCKER_REGISTRY_URL=$CI_REGISTRY # built-in GitLab Registry URL
+    - export COMMIT_HASH=$CI_COMMIT_SHA # Your current commit sha
+    - export IMAGE_NAME_WITH_REGISTRY_PREFIX=$CI_REGISTRY_IMAGE # Your repository prefixed with GitLab Registry URL
+    - docker login -u "$DOCKER_REGISTRY_USER" -p "$DOCKER_REGISTRY_PASSWORD" $DOCKER_REGISTRY_URL # Instructs GitLab to login to its registry
+    - apk add --update curl && rm -rf /var/cache/apk/*
+
+  script:
+    - echo "Building..." # MAKE SURE NO SPACE ON EITHER SIDE OF = IN THE FOLLOWING LINE
+    - export CONTAINER_FULL_IMAGE_NAME_WITH_TAG=$IMAGE_NAME_WITH_REGISTRY_PREFIX/teste-deploy:$COMMIT_HASH
+    - export CONTAINER_FULL_IMAGE_NAME_WITH_TAG_LATEST=$IMAGE_NAME_WITH_REGISTRY_PREFIX/teste-deploy:latest
+    - docker build -f ./Dockerfile --pull -t built-image-name .
+    - docker tag built-image-name "$CONTAINER_FULL_IMAGE_NAME_WITH_TAG"
+    - docker tag built-image-name "$CONTAINER_FULL_IMAGE_NAME_WITH_TAG_LATEST"
+    - docker push "$CONTAINER_FULL_IMAGE_NAME_WITH_TAG"
+    - docker push "$CONTAINER_FULL_IMAGE_NAME_WITH_TAG_LATEST"
+    - echo $CONTAINER_FULL_IMAGE_NAME_WITH_TAG
+    - echo "Deploying on Portainer..."
+    - curl -X POST http://ip172-18-0-83-c3h2d97njsv000einkc0-9090.direct.labs.play-with-docker.com/api/webhooks/7ded0fc0-fe73-416e-8dc5-89322756ad8c?tag=latest
+  only:
+    - master
